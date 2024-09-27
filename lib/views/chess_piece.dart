@@ -10,4 +10,10 @@ class ChessPiece {
     required this.isWhite,
     required this.imagePath,
   });
+
+  @override
+  bool operator ==(covariant ChessPiece other) => other.imagePath == imagePath;
+
+  @override
+  int get hashCode => imagePath.hashCode;
 }

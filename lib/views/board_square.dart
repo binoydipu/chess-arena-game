@@ -2,7 +2,7 @@ import 'package:chessarena/constants/colors.dart';
 import 'package:chessarena/views/chess_piece.dart';
 import 'package:flutter/material.dart';
 
-typedef TapOnSquare = void Function();
+typedef TapOnSquare = void Function()?;
 
 class BoardSquare extends StatelessWidget {
   final ChessPiece? piece;
@@ -27,11 +27,11 @@ class BoardSquare extends StatelessWidget {
     Color? squareColor;
 
     if (isSelected) {
-      squareColor = Colors.green;
+      squareColor = selectedPieceColor;
     } else if (isValidMove && canKill) {
-      squareColor = Colors.red;
+      squareColor = canKillColor;
     } else if (isValidMove) {
-      squareColor = Colors.green[200];
+      squareColor = validMovesColor;
     } else {
       squareColor = isLight ? lightSquareColor : darkSquareColor;
     }
@@ -40,7 +40,7 @@ class BoardSquare extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: squareColor,
-        margin: EdgeInsets.all(isValidMove ? 4 : 0),
+        margin: EdgeInsets.all(isValidMove ? 2 : 0),
         child: piece != null ? Image.asset(piece!.imagePath) : null,
       ),
     );

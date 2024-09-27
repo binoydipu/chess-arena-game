@@ -11,7 +11,7 @@ void main() {
       title: 'Chess Arena',
       theme: ThemeData(
         appBarTheme: const AppBarTheme(
-          backgroundColor: appBarColor,
+          backgroundColor: darkSquareColor,
           foregroundColor: Colors.white,
           titleTextStyle: TextStyle(
             fontSize: 22,
