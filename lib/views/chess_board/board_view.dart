@@ -1,10 +1,11 @@
 import 'package:chessarena/constants/colors.dart';
 import 'package:chessarena/constants/routes.dart';
+import 'package:chessarena/enums/chess_piece_type.dart';
 import 'package:chessarena/helpers/board_initializer.dart';
 import 'package:chessarena/helpers/moves/calculate_valid_moves.dart';
-import 'package:chessarena/views/board_square.dart';
-import 'package:chessarena/views/chess_piece.dart';
-import 'package:chessarena/views/dead_piece.dart';
+import 'package:chessarena/views/chess_board/board_square.dart';
+import 'package:chessarena/views/chess_board/chess_piece.dart';
+import 'package:chessarena/views/chess_board/dead_piece.dart';
 import 'package:flutter/material.dart';
 
 class BoardView extends StatefulWidget {
@@ -18,7 +19,7 @@ class _BoardViewState extends State<BoardView> {
   /// stores current chess board state
   late List<List<ChessPiece?>> board;
 
-  /// currently tapped square
+  /// currently selected chess piece
   late ChessPiece? selectedPiece;
   late int selectedRow;
   late int selectedCol;
@@ -34,6 +35,15 @@ class _BoardViewState extends State<BoardView> {
 
   /// a list of valid moves for currently selected piece i.e. in the square
   late List<List<int>> validMoves;
+
+  /// keeps track of white king's position
+  List<int> whiteKingPosition = [7, 4];
+
+  /// keeps track of black king's position
+  List<int> blackKingPosition = [0, 4];
+
+  /// Current King is in check or not
+  bool kingInCheck = false;
 
   bool _isWhite(int index) {
     int x = index ~/ 8;
@@ -118,9 +128,20 @@ class _BoardViewState extends State<BoardView> {
       }
     }
 
+    // check if the piece being moved is a king
+    if (selectedPiece!.type == ChessPieceType.king) {
+      if (selectedPiece!.isWhite) {
+        whiteKingPosition = [newRow, newCol];
+      } else {
+        blackKingPosition = [newRow, newCol];
+      }
+    }
+
     // move the piece and clear the old square
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
+
+    kingInCheck = _isKingInCheck(!isWhiteTurn);
 
     setState(() {
       selectedPiece = null;
@@ -131,6 +152,34 @@ class _BoardViewState extends State<BoardView> {
 
     // change turns
     isWhiteTurn ^= true;
+  }
+
+  bool _isKingInCheck(bool isWhiteKing) {
+    List<int> kingPosition =
+        isWhiteKing ? whiteKingPosition : blackKingPosition;
+
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        if (board[row][col] == null) {
+          continue;
+        } else if (board[row][col]!.isWhite == isWhiteKing) {
+          continue;
+        } else {
+          List<List<int>> curValidMoves = calculateValidMoves(
+            row: row,
+            col: col,
+            piece: board[row][col]!,
+            board: board,
+          );
+          if (curValidMoves.any(
+            (move) => move[0] == kingPosition[0] && move[1] == kingPosition[1],
+          )) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   @override
@@ -202,12 +251,20 @@ class _BoardViewState extends State<BoardView> {
                     break;
                   }
                 }
+                bool isInCheck = (isWhiteTurn
+                        ? whiteKingPosition[0] == row &&
+                            whiteKingPosition[1] == col
+                        : blackKingPosition[0] == row &&
+                            blackKingPosition[1] == col) &&
+                    kingInCheck;
+
                 return BoardSquare(
                   isLight: _isWhite(index),
                   piece: board[row][col],
-                  isSelected: isSelected,
+                  isSelected: isInCheck ? false : isSelected,
                   isValidMove: isValidMove,
                   canKill: _canKillPiece(row, col),
+                  isInCheck: isInCheck,
                   onTap: () => _tappedOnSquare(row, col),
                 );
               },

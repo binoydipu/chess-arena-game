@@ -1,5 +1,5 @@
 import 'package:chessarena/enums/chess_piece_type.dart';
-import 'package:chessarena/views/chess_piece.dart';
+import 'package:chessarena/views/chess_board/chess_piece.dart';
 
 String getImagePath(ChessPieceType type, bool isWhite) {
   String prefix = 'assets/images/piece/';

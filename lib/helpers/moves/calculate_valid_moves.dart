@@ -1,6 +1,6 @@
 import 'package:chessarena/enums/chess_piece_type.dart';
 import 'package:chessarena/helpers/moves/move_constants.dart';
-import 'package:chessarena/views/chess_piece.dart';
+import 'package:chessarena/views/chess_board/chess_piece.dart';
 
 bool _isInBoard(int row, int col) {
   return row >= 0 && col >= 0 && row <= 7 && col <= 7;

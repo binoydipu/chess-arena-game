@@ -1,6 +1,6 @@
 import 'package:chessarena/constants/colors.dart';
 import 'package:chessarena/constants/routes.dart';
-import 'package:chessarena/views/board_view.dart';
+import 'package:chessarena/views/chess_board/board_view.dart';
 import 'package:chessarena/views/login_view.dart';
 import 'package:flutter/material.dart';
 

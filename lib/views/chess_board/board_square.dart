@@ -1,5 +1,5 @@
 import 'package:chessarena/constants/colors.dart';
-import 'package:chessarena/views/chess_piece.dart';
+import 'package:chessarena/views/chess_board/chess_piece.dart';
 import 'package:flutter/material.dart';
 
 typedef TapOnSquare = void Function()?;
@@ -10,6 +10,7 @@ class BoardSquare extends StatelessWidget {
   final bool isSelected;
   final bool isValidMove;
   final bool canKill;
+  final bool isInCheck;
   final TapOnSquare onTap;
 
   const BoardSquare({
@@ -19,6 +20,7 @@ class BoardSquare extends StatelessWidget {
     required this.isSelected,
     required this.isValidMove,
     required this.canKill,
+    required this.isInCheck,
     required this.onTap,
   });
 
@@ -32,6 +34,8 @@ class BoardSquare extends StatelessWidget {
       squareColor = canKillColor;
     } else if (isValidMove) {
       squareColor = validMovesColor;
+    } else if (isInCheck) {
+      squareColor = kingInCheckColor;
     } else {
       squareColor = isLight ? lightSquareColor : darkSquareColor;
     }
