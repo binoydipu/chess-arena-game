@@ -44,3 +44,7 @@ const kingMoves = [
   [1, -1],
   [1, 1],
 ];
+
+bool isInBoard(int row, int col) {
+  return row >= 0 && col >= 0 && row <= 7 && col <= 7;
+}
