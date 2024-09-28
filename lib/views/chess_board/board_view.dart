@@ -37,13 +37,13 @@ class _BoardViewState extends State<BoardView> {
   late List<List<int>> validMoves;
 
   /// keeps track of white king's position
-  List<int> whiteKingPosition = [7, 4];
+  late List<int> whiteKingPosition;
 
   /// keeps track of black king's position
-  List<int> blackKingPosition = [0, 4];
+  late List<int> blackKingPosition;
 
   /// Current King is in check or not
-  bool kingInCheck = false;
+  late bool kingInCheck;
 
   /// Checks if current piece is white < true: white;  false: black >
   bool _isWhite(int index) {
@@ -121,7 +121,7 @@ class _BoardViewState extends State<BoardView> {
   }
 
   /// User tapped on a valid move squares; so move piece
-  void _movePiece(int newRow, int newCol) {
+  void _movePiece(int newRow, int newCol) async {
     // killed a piece, so add it to appropriate Lists
     if (board[newRow][newCol] != null) {
       final capturedPiece = board[newRow][newCol];
@@ -156,6 +156,43 @@ class _BoardViewState extends State<BoardView> {
 
     // change turns
     isWhiteTurn ^= true;
+
+    // Check if Game over
+    bool isCheckMate = _isCheckMate(isWhiteTurn);
+    final currentPlayer = isWhiteTurn ? 'Black' : 'White';
+
+    // Show Check Mate dialog
+    if (isCheckMate) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(
+            'CHECK MATE!',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: lightSquareColor,
+          content: Text('Player $currentPlayer wins!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetGame();
+              },
+              child: const Text('Play Again'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  loginRoute,
+                  (route) => false,
+                );
+              },
+              child: const Text('Quit'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   /// Checks if any Enemy piece on the board can target the king
@@ -190,7 +227,10 @@ class _BoardViewState extends State<BoardView> {
     return false;
   }
 
-  /// Calculates all possible moves that can be made by the piece 
+  bool _isInBoard(int row, int col) {
+    return row >= 0 && col >= 0 && row <= 7 && col <= 7;
+  }
+  /// Calculates all possible moves that can be made by the piece
   List<List<int>> _calculateValidMoves({
     required int row,
     required int col,
@@ -205,24 +245,24 @@ class _BoardViewState extends State<BoardView> {
     switch (piece.type) {
       case ChessPieceType.pawn:
         // pawn can moves forward +1 if not occupied
-        if (isInBoard(row + direction, col) &&
+        if (_isInBoard(row + direction, col) &&
             board[row + direction][col] == null) {
           validMoves.add([row + direction, col]);
         }
         // pawn can moves +2 from starting position
         if ((row == 1 && !piece.isWhite) || (row == 6 && piece.isWhite)) {
-          if (isInBoard(row + 2 * direction, col) &&
+          if (_isInBoard(row + 2 * direction, col) &&
               board[row + 2 * direction][col] == null) {
             validMoves.add([row + 2 * direction, col]);
           }
         }
         // pawn kills other pieces diagolally
-        if (isInBoard(row + direction, col - 1) &&
+        if (_isInBoard(row + direction, col - 1) &&
             board[row + direction][col - 1] != null &&
             board[row + direction][col - 1]!.isWhite != piece.isWhite) {
           validMoves.add([row + direction, col - 1]);
         }
-        if (isInBoard(row + direction, col + 1) &&
+        if (_isInBoard(row + direction, col + 1) &&
             board[row + direction][col + 1] != null &&
             board[row + direction][col + 1]!.isWhite != piece.isWhite) {
           validMoves.add([row + direction, col + 1]);
@@ -234,7 +274,7 @@ class _BoardViewState extends State<BoardView> {
           while (true) {
             final newRow = row + i * move[0];
             final newCol = col + i * move[1];
-            if (!isInBoard(newRow, newCol)) {
+            if (!_isInBoard(newRow, newCol)) {
               break;
             }
             if (board[newRow][newCol] != null) {
@@ -252,7 +292,7 @@ class _BoardViewState extends State<BoardView> {
         for (final move in knightMoves) {
           final newRow = row + move[0];
           final newCol = col + move[1];
-          if (!isInBoard(newRow, newCol)) {
+          if (!_isInBoard(newRow, newCol)) {
             continue;
           }
           if (board[newRow][newCol] != null) {
@@ -270,7 +310,7 @@ class _BoardViewState extends State<BoardView> {
           while (true) {
             final newRow = row + i * move[0];
             final newCol = col + i * move[1];
-            if (!isInBoard(newRow, newCol)) {
+            if (!_isInBoard(newRow, newCol)) {
               break;
             }
             if (board[newRow][newCol] != null) {
@@ -290,7 +330,7 @@ class _BoardViewState extends State<BoardView> {
           while (true) {
             final newRow = row + i * move[0];
             final newCol = col + i * move[1];
-            if (!isInBoard(newRow, newCol)) {
+            if (!_isInBoard(newRow, newCol)) {
               break;
             }
             if (board[newRow][newCol] != null) {
@@ -308,7 +348,7 @@ class _BoardViewState extends State<BoardView> {
         for (final move in kingMoves) {
           final newRow = row + move[0];
           final newCol = col + move[1];
-          if (!isInBoard(newRow, newCol)) {
+          if (!_isInBoard(newRow, newCol)) {
             continue;
           }
           if (board[newRow][newCol] != null) {
@@ -322,7 +362,7 @@ class _BoardViewState extends State<BoardView> {
         break;
       default:
     }
-    
+
     if (needToFilter) {
       validMoves = _filterValidMoves(
         validMoves: validMoves,
@@ -397,6 +437,49 @@ class _BoardViewState extends State<BoardView> {
     return kingInCheck == false;
   }
 
+  bool _isCheckMate(bool isWhiteKing) {
+    if (!_isKingInCheck(isWhiteKing)) {
+      return false;
+    }
+
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        if (board[row][col] == null) {
+          continue;
+        } else if (board[row][col]!.isWhite != isWhiteKing) {
+          continue;
+        } else {
+          List<List<int>> curValidMoves = _calculateValidMoves(
+            row: row,
+            col: col,
+            piece: board[row][col]!,
+            needToFilter: true,
+          );
+          // any valid move means oponent can make a move
+          if (curValidMoves.isNotEmpty) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  void _resetGame() {
+    board = boardInitializer();
+    selectedPiece = null;
+    selectedRow = -1;
+    selectedCol = -1;
+    isWhiteTurn = true;
+    validMoves = [];
+    whiteKingPosition = [7, 4];
+    blackKingPosition = [0, 4];
+    whitePieceTaken = [];
+    blackPieceTaken = [];
+    kingInCheck = false;
+    setState(() {});
+  }
+
   @override
   void initState() {
     board = boardInitializer();
@@ -405,6 +488,9 @@ class _BoardViewState extends State<BoardView> {
     selectedCol = -1;
     isWhiteTurn = true;
     validMoves = [];
+    whiteKingPosition = [7, 4];
+    blackKingPosition = [0, 4];
+    kingInCheck = false;
     super.initState();
   }
 

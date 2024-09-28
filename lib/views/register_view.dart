@@ -2,14 +2,14 @@ import 'package:chessarena/constants/routes.dart';
 import 'package:chessarena/styles/button_style.dart';
 import 'package:flutter/material.dart';
 
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+class RegisterView extends StatefulWidget {
+  const RegisterView({super.key});
 
   @override
-  State<LoginView> createState() => _LoginViewState();
+  State<RegisterView> createState() => _RegisterViewState();
 }
 
-class _LoginViewState extends State<LoginView> {
+class _RegisterViewState extends State<RegisterView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
 
@@ -32,7 +32,7 @@ class _LoginViewState extends State<LoginView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Login',
+          'Register',
         ),
       ),
       body: Padding(
@@ -41,7 +41,7 @@ class _LoginViewState extends State<LoginView> {
           child: Column(
             children: [
               const Text(
-                  'Please log in to your account in order to save your progress and play online!'),
+                  'Register now in order to save your progress and play online!'),
               TextField(
                 controller: _email,
                 enableSuggestions: false,
@@ -68,21 +68,10 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () async {
                         // final email = _email.text;
                         // final password = _password.text;
-                        // TODO: Firebase Login
-                        final snackBar = SnackBar(
-                          content: const Text('Feature under development'),
-                          elevation: 10,
-                          duration: const Duration(seconds: 2),
-                          action: SnackBarAction(
-                            label: 'Ok',
-                            onPressed: () => ScaffoldMessenger.of(context)
-                                .hideCurrentSnackBar(),
-                          ),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                        // TODO: Firebase Register
                       },
                       style: elevatedButtonStyle,
-                      child: const Text('Login'),
+                      child: const Text('Register'),
                     ),
                   ),
                 ],
@@ -107,31 +96,13 @@ class _LoginViewState extends State<LoginView> {
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () async {
-                  // TODO: Forgot Password
-                  final snackBar = SnackBar(
-                    content: const Text('Feature under development'),
-                    elevation: 10,
-                    duration: const Duration(seconds: 2),
-                    action: SnackBarAction(
-                      label: 'Ok',
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-                    ),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                },
-                style: textButtonStyle,
-                child: const Text('I forgot my password'),
-              ),
-              TextButton(
-                onPressed: () async {
                   Navigator.of(context).pushNamedAndRemoveUntil(
-                    registerRoute,
+                    loginRoute,
                     (route) => false,
                   );
                 },
                 style: textButtonStyle,
-                child: const Text('Not registered yet? Register now!'),
+                child: const Text('Already have an account? Login now!'),
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:chessarena/constants/colors.dart';
 import 'package:chessarena/constants/routes.dart';
 import 'package:chessarena/views/chess_board/board_view.dart';
 import 'package:chessarena/views/login_view.dart';
+import 'package:chessarena/views/register_view.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -21,6 +22,7 @@ void main() {
       home: const LoginView(),
       routes: {
         loginRoute: (context) => const LoginView(),
+        registerRoute: (context) => const RegisterView(),
         boardRoute: (context) => const BoardView(),
       },
     ),
