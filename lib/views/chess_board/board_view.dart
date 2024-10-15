@@ -45,6 +45,15 @@ class _BoardViewState extends State<BoardView> {
   /// Current King is in check or not
   late bool kingInCheck;
 
+  /// bool to check if a side can castle (i.e. swap king & rook) or not
+  late bool whiteKingMoved;
+  late bool blackKingMoved;
+
+  late bool whiteRookKingSideMoved;
+  late bool whiteRookQueenSideMoved;
+  late bool blackRookKingSideMoved;
+  late bool blackRookQueenSideMoved;
+
   /// Checks if current piece is white < true: white;  false: black >
   bool _isWhite(int index) {
     int x = index ~/ 8;
@@ -76,6 +85,7 @@ class _BoardViewState extends State<BoardView> {
           col: col,
           piece: selectedPiece!,
           needToFilter: true,
+          calculateCanCastle: true,
         );
       } // tapped on a piece of same color, so selection changed
       else if (selectedPiece != null &&
@@ -91,15 +101,26 @@ class _BoardViewState extends State<BoardView> {
           validMoves = [];
         } // else tapped on other pieces of same color
         else {
-          selectedPiece = board[row][col];
-          selectedRow = row;
-          selectedCol = col;
-          validMoves = _calculateValidMoves(
-            row: row,
-            col: col,
-            piece: selectedPiece!,
-            needToFilter: true,
-          );
+          // castling move for (king to rook) & (rook to king)
+          if (board[row][col]!.type == ChessPieceType.rook &&
+              validMoves.any((move) => move[0] == row && move[1] == col)) {
+            _castlingMove(isWhiteTurn, col < 4);
+          } else if (board[row][col]!.type == ChessPieceType.king &&
+              validMoves.any((move) => move[0] == row && move[1] == col)) {
+            _castlingMove(isWhiteTurn, selectedCol == 0);
+          } else {
+            // selection changed
+            selectedPiece = board[row][col];
+            selectedRow = row;
+            selectedCol = col;
+            validMoves = _calculateValidMoves(
+              row: row,
+              col: col,
+              piece: selectedPiece!,
+              needToFilter: true,
+              calculateCanCastle: true,
+            );
+          }
         }
       } // selected a piece & tapped on a valid move square
       else if (selectedPiece != null &&
@@ -136,14 +157,45 @@ class _BoardViewState extends State<BoardView> {
     if (selectedPiece!.type == ChessPieceType.king) {
       if (selectedPiece!.isWhite) {
         whiteKingPosition = [newRow, newCol];
+        whiteKingMoved = true;
       } else {
         blackKingPosition = [newRow, newCol];
+        blackKingMoved = true;
       }
     }
 
     // move the piece and clear the old square
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
+
+    // check if pawn is in oposite end
+    if (selectedPiece!.type == ChessPieceType.pawn) {
+      if (selectedPiece!.isWhite) {
+        if (newRow == 0) {
+          _pawnPromotion(newRow, newCol, isWhiteTurn);
+        }
+      } else {
+        if (newRow == 7) {
+          _pawnPromotion(newRow, newCol, isWhiteTurn);
+        }
+      }
+    }
+
+    if (selectedPiece!.type == ChessPieceType.rook) {
+      if (selectedPiece!.isWhite) {
+        if (selectedCol == 0) {
+          whiteRookQueenSideMoved = true;
+        } else if (selectedCol == 7) {
+          whiteRookKingSideMoved = true;
+        }
+      } else {
+        if (selectedCol == 0) {
+          blackRookQueenSideMoved = true;
+        } else if (selectedCol == 7) {
+          blackRookKingSideMoved = true;
+        }
+      }
+    }
 
     kingInCheck = _isKingInCheck(!isWhiteTurn);
 
@@ -212,6 +264,7 @@ class _BoardViewState extends State<BoardView> {
             col: col,
             piece: board[row][col]!,
             needToFilter: false,
+            calculateCanCastle: false,
           );
           // false cause these moves are just raw for checking kings check condition
           // as all possible moves can check the king
@@ -230,12 +283,14 @@ class _BoardViewState extends State<BoardView> {
   bool _isInBoard(int row, int col) {
     return row >= 0 && col >= 0 && row <= 7 && col <= 7;
   }
+
   /// Calculates all possible moves that can be made by the piece
   List<List<int>> _calculateValidMoves({
     required int row,
     required int col,
     required ChessPiece piece,
     required bool needToFilter,
+    required bool calculateCanCastle,
   }) {
     List<List<int>> validMoves = [];
 
@@ -371,6 +426,23 @@ class _BoardViewState extends State<BoardView> {
         piece: piece,
       );
     }
+
+    // Castling moves
+    if (calculateCanCastle) {
+      if (piece.type == ChessPieceType.king) {
+        if (_canCastle(isWhiteTurn, true)) {
+          validMoves.add([isWhiteTurn ? 7 : 0, 0]);
+        }
+        if (_canCastle(isWhiteTurn, false)) {
+          validMoves.add([isWhiteTurn ? 7 : 0, 7]);
+        }
+      } else if (piece.type == ChessPieceType.rook) {
+        bool isLeftRook = selectedCol == 0;
+        if (_canCastle(isWhiteTurn, isLeftRook)) {
+          validMoves.add([isWhiteTurn ? 7 : 0, 4]);
+        }
+      }
+    }
     return validMoves;
   }
 
@@ -454,6 +526,7 @@ class _BoardViewState extends State<BoardView> {
             col: col,
             piece: board[row][col]!,
             needToFilter: true,
+            calculateCanCastle: false,
           );
           // any valid move means oponent can make a move
           if (curValidMoves.isNotEmpty) {
@@ -463,6 +536,233 @@ class _BoardViewState extends State<BoardView> {
       }
     }
     return true;
+  }
+
+  /// Checks if king and a rook can do castling
+  bool _canCastle(bool isWhite, bool isLeftRook) {
+    if (isWhite) {
+      if (isLeftRook) {
+        if (!whiteKingMoved &&
+            !whiteRookQueenSideMoved &&
+            _isPathClearToCastle(isWhite, isLeftRook)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        if (!whiteKingMoved &&
+            !whiteRookKingSideMoved &&
+            _isPathClearToCastle(isWhite, isLeftRook)) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    } else {
+      if (isLeftRook) {
+        if (!blackKingMoved &&
+            !blackRookQueenSideMoved &&
+            _isPathClearToCastle(isWhite, isLeftRook)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        if (!blackKingMoved &&
+            !blackRookKingSideMoved &&
+            _isPathClearToCastle(isWhite, isLeftRook)) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+  }
+
+  /// Checks if there is any piece between King and Rook and if any position is in Check
+  bool _isPathClearToCastle(bool isWhite, bool isLeftRook) {
+    int startPostition = 4;
+    int endPosition = isLeftRook ? 0 : 7;
+    int row = isWhite ? 7 : 0;
+    if (startPostition > endPosition) {
+      endPosition = 4;
+      startPostition = 0;
+    }
+    // check is path contains other pieces
+    for (int col = startPostition + 1; col < endPosition; col++) {
+      if (board[row][col] != null) {
+        return false;
+      }
+    }
+    endPosition = isLeftRook ? 1 : 6;
+    if (startPostition > endPosition) {
+      endPosition = 4;
+      startPostition = 1;
+    }
+    // check if in this path king is in check or not
+    for (int col = startPostition; col <= endPosition; col++) {
+      if (!_isSafeToMove(
+        piece: board[row][4]!,
+        curRow: row,
+        curCol: 4,
+        endRow: row,
+        endCol: col,
+      )) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Move King and Rook
+  void _castlingMove(bool isWhite, bool isLeftRook) async {
+    if (isWhite) {
+      if (isLeftRook) {
+        board[7][2] = board[7][4];
+        board[7][3] = board[7][0];
+        whiteKingPosition = [7, 2];
+        whiteRookQueenSideMoved = true;
+      } else {
+        board[7][6] = board[7][4];
+        board[7][5] = board[7][7];
+        whiteKingPosition = [7, 6];
+        whiteRookKingSideMoved = true;
+      }
+      whiteKingMoved = true;
+    } else {
+      if (isLeftRook) {
+        board[0][2] = board[0][4];
+        board[0][3] = board[0][0];
+        blackKingPosition = [0, 2];
+        blackRookQueenSideMoved = true;
+      } else {
+        board[0][6] = board[0][4];
+        board[0][5] = board[0][7];
+        blackKingPosition = [0, 6];
+        blackRookKingSideMoved = true;
+      }
+      blackKingMoved = true;
+    }
+    board[isWhite ? 7 : 0][4] = null;
+    board[isWhite ? 7 : 0][isLeftRook ? 0 : 7] = null;
+
+    kingInCheck = _isKingInCheck(!isWhiteTurn);
+
+    setState(() {
+      selectedPiece = null;
+      selectedRow = -1;
+      selectedCol = -1;
+      validMoves = [];
+    });
+
+    // change turns
+    isWhiteTurn ^= true;
+
+    // Check if Game over
+    bool isCheckMate = _isCheckMate(isWhiteTurn);
+    final currentPlayer = isWhiteTurn ? 'Black' : 'White';
+
+    // Show Check Mate dialog
+    if (isCheckMate) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(
+            'CHECK MATE!',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: lightSquareColor,
+          content: Text('Player $currentPlayer wins!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetGame();
+              },
+              child: const Text('Play Again'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  loginRoute,
+                  (route) => false,
+                );
+              },
+              child: const Text('Quit'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// Changes pawn to other pieces by showing alert dialog
+  void _pawnPromotion(int row, int col, bool isWhite) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'PAWN PROMOTED!',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: lightSquareColor,
+        content: const Text('Select your piece!'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                board[row][col] = ChessPiece(
+                  type: ChessPieceType.queen,
+                  isWhite: isWhite,
+                  imagePath: getImagePath(ChessPieceType.queen, isWhite),
+                );
+              });
+            },
+            child: const Text('Queen'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                board[row][col] = ChessPiece(
+                  type: ChessPieceType.rook,
+                  isWhite: isWhite,
+                  imagePath: getImagePath(ChessPieceType.rook, isWhite),
+                );
+              });
+            },
+            child: const Text('Rook'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                board[row][col] = ChessPiece(
+                  type: ChessPieceType.bishop,
+                  isWhite: isWhite,
+                  imagePath: getImagePath(ChessPieceType.bishop, isWhite),
+                );
+              });
+            },
+            child: const Text('Bishop'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                board[row][col] = ChessPiece(
+                  type: ChessPieceType.knight,
+                  isWhite: isWhite,
+                  imagePath: getImagePath(ChessPieceType.knight, isWhite),
+                );
+              });
+            },
+            child: const Text('Knight'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _resetGame() {
@@ -477,6 +777,12 @@ class _BoardViewState extends State<BoardView> {
     whitePieceTaken = [];
     blackPieceTaken = [];
     kingInCheck = false;
+    whiteKingMoved = false;
+    blackKingMoved = false;
+    whiteRookKingSideMoved = false;
+    whiteRookQueenSideMoved = false;
+    blackRookKingSideMoved = false;
+    blackRookQueenSideMoved = false;
     setState(() {});
   }
 
@@ -491,6 +797,12 @@ class _BoardViewState extends State<BoardView> {
     whiteKingPosition = [7, 4];
     blackKingPosition = [0, 4];
     kingInCheck = false;
+    whiteKingMoved = false;
+    blackKingMoved = false;
+    whiteRookKingSideMoved = false;
+    whiteRookQueenSideMoved = false;
+    blackRookKingSideMoved = false;
+    blackRookQueenSideMoved = false;
     super.initState();
   }
 
